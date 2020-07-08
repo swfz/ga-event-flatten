@@ -25,6 +25,26 @@ const request = async (authClient, range, metrics, dimensions) => {
   return await analyticsreporting.reports.batchGet(eventTrackPayload(authClient, range));
 }
 
+const formatEventField = (row) => {
+  const onlyCategoryKeys = [
+    'ExternalLink',
+    'Read'
+  ];
+
+  const formatActions = ['scroll'];
+
+  const action = formatActions.includes(row.dimensions[3]) ? row.dimensions[4].replace('%', 'p') : row.dimensions[4];
+
+  return onlyCategoryKeys.includes(row.dimensions[3]) ? row.dimensions[3] : `${row.dimensions[3]}_${action}`;
+}
+
+const uniqKeyPair = (row) => {
+  const date = row.dimensions[1];
+  const path = row.dimensions[2].replace(/\?.*/,'');
+
+  return {date, path}
+}
+
 ( async () => {
   const auth = new google.auth.GoogleAuth({
     scopes: ['https://www.googleapis.com/auth/analytics.readonly']
@@ -78,10 +98,9 @@ const request = async (authClient, range, metrics, dimensions) => {
 
   const eventRows = new Map();
   eventRes.data.reports[0].data.rows.forEach(r => {
-    const date = r.dimensions[1];
-    const path = r.dimensions[2].replace(/\?.*/,'');
+    const keyPair = uniqKeyPair(r);
 
-    const key = `${date}_${path}`;
+    const key = `${keyPair.date}_${keyPair.path}`;
     if ( rowsByKey = eventRows.get(key) ){
       rowsByKey.push(r);
       eventRows.set(key, rowsByKey);
@@ -94,32 +113,28 @@ const request = async (authClient, range, metrics, dimensions) => {
   const calced = new Map();
 
   pvRes.data.reports[0].data.rows.forEach(r => {
-    const date = r.dimensions[1];
-    const path = r.dimensions[2].replace(/\?.*/,'');
-
-    const key = `${date}_${path}`;
+    const keyPair = uniqKeyPair(r);
+    const key = `${keyPair.date}_${keyPair.path}`;
 
     let row = calced.get(key);
     if ( row ) {
       row['pageViews'] += parseInt(r.metrics[0].values[0]);
     }
     else {
-      row = {
-        pageTitle: r.dimensions[0],
-        date: date,
-        path: path,
-        socialNetwork: r.dimensions[3],
-        fullReferrer: r.dimensions[4],
-        source: r.dimensions[5],
-        pageViews: parseInt(r.metrics[0].values[0])
+      row = {...{keyPair},...{
+          pageTitle: r.dimensions[0],
+          socialNetwork: r.dimensions[3],
+          fullReferrer: r.dimensions[4],
+          source: r.dimensions[5],
+          pageViews: parseInt(r.metrics[0].values[0])
+        }
       };
     }
 
     events = eventRows.get(key);
     if ( events ) {
       events.forEach(e => {
-        // /が入ってしまっているものがあるため
-        const eventKey = e.dimensions[3] == 'ExternalLink' ? 'ExternalLink' : `${e.dimensions[3]}_${e.dimensions[4]}`.replace(/\/|:|\.|-/g, '_').replace('%','p');
+        const eventKey = formatEventField(e);
 
         if (row[eventKey] === undefined) {
           row[eventKey] = parseInt(e.metrics[0].values[0]);
