@@ -4,8 +4,10 @@ import * as moment from 'moment';
 import * as fs from "fs";
 import Params$Resource$Reports$Batchget = analyticsreporting_v4.Params$Resource$Reports$Batchget;
 import * as process from "process";
+import { OAuth2Client, JWT, Compute, UserRefreshClient, GaxiosPromise, GoogleConfigurable, MethodOptions, StreamMethodOptions, GlobalOptions, GoogleAuth, BodyResponseCallback, APIRequestContext } from 'googleapis-common';
 import Schema$ReportRequest = analyticsreporting_v4.Schema$ReportRequest;
 import Schema$DateRange = analyticsreporting_v4.Schema$DateRange;
+import Schema$GetReportsResponse = analyticsreporting_v4.Schema$GetReportsResponse;
 
 // custom dimensionは複数指定すると結果が返ってこない
 
@@ -29,7 +31,7 @@ const request = async (authClient: any, range: Schema$DateRange, metrics: string
   return await analyticsreporting.reports.batchGet(eventTrackPayload);
 }
 
-const formatEventField = (row) => {
+const formatEventField = (row): string => {
   const onlyCategoryKeys = [
     'ExternalLink',
     'Read'
