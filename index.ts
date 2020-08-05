@@ -1,6 +1,6 @@
 import 'process';
 import {analyticsreporting_v4, google} from 'googleapis';
-import * as moment from 'moment';
+import moment from 'moment';
 import * as fs from "fs";
 import Params$Resource$Reports$Batchget = analyticsreporting_v4.Params$Resource$Reports$Batchget;
 import * as process from "process";
@@ -31,7 +31,7 @@ const request = async (authClient: any, range: Schema$DateRange, metrics: string
   return await analyticsreporting.reports.batchGet(eventTrackPayload);
 }
 
-const formatEventField = (row): string => {
+const formatEventField = (row: any): string => {
   const onlyCategoryKeys = [
     'ExternalLink',
     'Read'
@@ -44,7 +44,7 @@ const formatEventField = (row): string => {
   return onlyCategoryKeys.includes(row.dimensions[3]) ? row.dimensions[3] : `${row.dimensions[3]}_${action}`;
 }
 
-const uniqKeyPair = (row) => {
+const uniqKeyPair = (row: any) => {
   const date = row.dimensions[1];
   const path = row.dimensions[2].replace(/\?.*/,'');
 
@@ -62,10 +62,6 @@ const uniqKeyPair = (row) => {
     endDate: moment().add(-1, 'days').format('YYYY-MM-DD')
   };
 
-  // 'ga:dimension2',
-  // 'ga:dimension3',
-  // 'ga:dimension4'
-
   const eventRes = await request(authClient, last7DaysRange, [
     'ga:totalEvents',
     'ga:eventValue'
@@ -76,6 +72,8 @@ const uniqKeyPair = (row) => {
     'ga:eventCategory',
     'ga:eventAction',
     'ga:eventLabel',
+    'ga:socialNetwork',
+    'ga:fullReferrer',
   ]);
 
   const pvRes = await request(authClient, last7DaysRange, [
@@ -103,61 +101,72 @@ const uniqKeyPair = (row) => {
   // console.log(JSON.stringify(pvRes.data));
 
   const eventRows = new Map();
-  eventRes.data.reports[0].data.rows.forEach(r => {
-    const keyPair = uniqKeyPair(r);
+  if (eventRes && eventRes.data && eventRes.data.reports && eventRes.data.reports[0] && eventRes.data.reports[0].data && eventRes.data.reports[0].data.rows) {
+    eventRes.data.reports[0].data.rows.forEach((r: any) => {
+      const keyPair = uniqKeyPair(r);
 
-    const key = `${keyPair.date}_${keyPair.path}`;
-    const rowsByKey = eventRows.get(key);
-    if ( rowsByKey ){
-      rowsByKey.push(r);
-      eventRows.set(key, rowsByKey);
-    }
-    else {
-      eventRows.set(key, [r]);
-    }
-  });
+      const key = `${keyPair.date}_${keyPair.path}`;
+      const rowsByKey = eventRows.get(key);
+      if ( rowsByKey ){
+        rowsByKey.push(r);
+        eventRows.set(key, rowsByKey);
+      }
+      else {
+        eventRows.set(key, [r]);
+      }
+    });
+  }
 
   const calced = new Map();
 
-  pvRes.data.reports[0].data.rows.forEach(r => {
-    const keyPair = uniqKeyPair(r);
-    const key = `${keyPair.date}_${keyPair.path}`;
+  if (pvRes && pvRes.data && pvRes.data.reports && pvRes.data.reports[0] && pvRes.data.reports[0].data && pvRes.data.reports[0].data.rows) {
+    pvRes.data.reports[0].data.rows.forEach((r: any) => {
+      const keyPair = uniqKeyPair(r);
+      const key = `${keyPair.date}_${keyPair.path}`;
 
-    let row = calced.get(key);
-    if ( row ) {
-      row['pageViews'] += parseInt(r.metrics[0].values[0]);
-    }
-    else {
-      row = {...keyPair,...{
-          pageTitle: r.dimensions[0],
-          socialNetwork: r.dimensions[3],
-          fullReferrer: r.dimensions[4],
-          source: r.dimensions[5],
-          pageViews: parseInt(r.metrics[0].values[0])
-        }
-      };
-    }
+      let row = calced.get(key);
+      if ( row ) {
+        row['pageViews'] += parseInt(r.metrics[0].values[0]);
+      }
+      else {
+        row = {...keyPair,...{
+            pageTitle: r.dimensions[0],
+            socialNetwork: r.dimensions[3],
+            fullReferrer: r.dimensions[4],
+            source: r.dimensions[5],
+            pageViews: parseInt(r.metrics[0].values[0])
+          }
+        };
+      }
 
-    const events = eventRows.get(key);
-    if ( events ) {
-      events.forEach(e => {
-        const eventKey = formatEventField(e);
+      const events = eventRows.get(key);
+      if ( events ) {
+        events.forEach((e: any) => {
+          const eventKey = formatEventField(e);
 
-        if (row[eventKey] === undefined) {
-          row[eventKey] = parseInt(e.metrics[0].values[0]);
-        }
-        else {
-          row[eventKey] += parseInt(e.metrics[0].values[0]);
-        }
-      });
-    }
-
-    calced.set(key, row);
-  });
-
+          if (row[eventKey] === undefined) {
+            row[eventKey] = parseInt(e.metrics[0].values[0]);
+          }
+          else {
+            row[eventKey] += parseInt(e.metrics[0].values[0]);
+          }
+        });
+      }
+      calced.set(key, row);
+    });
+  }
 
   console.log(calced.values());
-  fs.writeFileSync('result.json', JSON.stringify(Array.from(calced.values())));
+  const byDate = Array.from(calced.values()).reduce((acc, cur) => {
+    acc[cur.date] = (acc[cur.date] === undefined) ? [] : acc[cur.date];
+    acc[cur.date].push(cur);
+    return acc;
+  }, {});
+
+  Object.keys(byDate).forEach(date => {
+    fs.writeFileSync(`results/result-${date}.json`, JSON.stringify(byDate[date]));
+  });
+  // fs.writeFileSync('result.json', JSON.stringify(Array.from(calced.values())));
 })();
 
 
