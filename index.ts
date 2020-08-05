@@ -57,10 +57,9 @@ const uniqKeyPair = (row: any) => {
   });
   const authClient = await auth.getClient();
 
-  const last7DaysRange = {
-    startDate: moment().add(-8, 'days').format('YYYY-MM-DD'),
-    endDate: moment().add(-1, 'days').format('YYYY-MM-DD')
-  };
+  const startDate = process.argv[3] ? process.argv[3] : moment().add(-8, 'days').format('YYYY-MM-DD');
+  const endDate = process.argv[4] ? process.argv[4] : moment().add(-1, 'days').format('YYYY-MM-DD');
+  const last7DaysRange = {startDate, endDate};
 
   const eventRes = await request(authClient, last7DaysRange, [
     'ga:totalEvents',
