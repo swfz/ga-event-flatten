@@ -6,4 +6,9 @@ eventとpvを計算するために同一レコードに落とし込むための�
 ## dimension
 - event, pv両方で含まれる値を指定する必要がある?
 
+## environment
+### embulk
+- GCP_KEY
 
+### batch
+- GA_VIEW_ID
