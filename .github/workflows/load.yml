@@ -1,0 +1,37 @@
+name: report
+
+on:
+  workflow_dispatch:
+    inputs:
+      start_date:
+        description: 'start date'
+        required: true
+      end_date:
+        description: 'end date'
+        required: true
+  schedule:
+    - cron: '0 1 * * *'
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    name: ga event report aggregate to bq
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-node@v2
+        with:
+          node-version: '12'
+      - uses: actions/cache@v2
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+      - run: npm ci
+      - name: report
+        env:
+          GCP_KEY: ${{ secrets.GCP_KEY }}
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ secrets.GCP_KEY }}
+          GA_VIEW_ID: ${{ secrets.GA_VIEW_ID }}
+        run: sh batch.sh
+
