@@ -11,6 +11,7 @@ import Schema$GetReportsResponse = analyticsreporting_v4.Schema$GetReportsRespon
 
 // custom dimensionは複数指定すると結果が返ってこない
 
+
 const analyticsreporting = google.analyticsreporting('v4');
 
 const request = async (authClient: any, range: Schema$DateRange, metrics: string[], dimensions: string[]) => {
@@ -39,18 +40,59 @@ const formatEventField = (row: any): string => {
 
   const formatActions = ['scroll'];
 
-  const action = formatActions.includes(row.dimensions[3]) ? row.dimensions[4].replace('%', 'p') : row.dimensions[4];
+  const action = formatActions.includes(row.dimensions[EventDimension.eventCategory]) ?
+    row.dimensions[EventDimension.eventAction].replace('%', 'p') :
+    row.dimensions[EventDimension.eventAction];
 
-  return onlyCategoryKeys.includes(row.dimensions[3]) ? row.dimensions[3] : `${row.dimensions[3]}_${action}`;
+  return onlyCategoryKeys.includes(row.dimensions[EventDimension.eventCategory]) ?
+    row.dimensions[EventDimension.eventCategory] :
+    `${row.dimensions[EventDimension.eventCategory]}_${action}`;
 }
 
 const uniqKeyPair = (row: any) => {
-  const date = row.dimensions[1];
-  const path = row.dimensions[2].replace(/\?.*/,'');
+  const date = row.dimensions[PvDimension.date];
+  const path = row.dimensions[PvDimension.pagePath].replace(/\?.*/,'');
 
   return {date, path}
 }
 
+enum PvDimension {
+  pageTitle,
+  date,
+  pagePath,
+  yearWeek
+}
+enum EventDimension {
+  pageTitle,
+  date,
+  pagePath,
+  yearWeek,
+  eventCategory,
+  eventAction,
+  eventLabel
+}
+enum PvMetrics {
+  pageViews,
+  sessions,
+  adsenseAdsViewed,
+  adsenseAdsClicks,
+  adsenseRevenue
+}
+enum EventMetrics {
+  totalEvents,
+  eventValue
+}
+
+type Dimension = PvDimension|EventDimension;
+type Metrics = PvMetrics|EventMetrics;
+type GaKey = Dimension|Metrics;
+
+const toStringKeys = (enumObject: any): string[] => {
+  return Object.keys(enumObject).filter(v => isNaN(Number(v)) === false).map((k: string) => enumObject[k]);
+}
+const toGaKeys = (enumObject: any): string[] => {
+  return toStringKeys(enumObject).map(k => `ga:${k}`);
+}
 ( async () => {
   const auth = new google.auth.GoogleAuth({
     scopes: ['https://www.googleapis.com/auth/analytics.readonly']
@@ -62,98 +104,78 @@ const uniqKeyPair = (row: any) => {
   const last7DaysRange = {startDate, endDate};
 
   const eventRes = await request(authClient, last7DaysRange, [
-    'ga:totalEvents',
-    'ga:eventValue'
+    ...toGaKeys(EventMetrics)
   ],[
-    'ga:pageTitle',
-    'ga:date',
-    'ga:pagePath',
-    'ga:eventCategory',
-    'ga:eventAction',
-    'ga:eventLabel',
-    'ga:socialNetwork',
-    'ga:fullReferrer',
+    ...toGaKeys(EventDimension)
   ]);
 
   const pvRes = await request(authClient, last7DaysRange, [
-    // 追加
-    'ga:pageViews',
-    'ga:sessions',
-    'ga:adsenseAdsViewed',
-    'ga:adsenseAdsClicks',
-    'ga:adsenseRevenue',
+    ...toGaKeys(PvMetrics)
   ],[
-    // 追加
-    'ga:pageTitle',
-    'ga:date',
-    'ga:pagePath',
-    'ga:socialNetwork',
-    'ga:fullReferrer',
-    'ga:source',
-    'ga:yearWeek',
+    ...toGaKeys(PvDimension)
   ]);
 
   fs.writeFileSync('result-event.json', JSON.stringify(eventRes.data));
   fs.writeFileSync('result-pv.json', JSON.stringify(pvRes.data));
 
-  // console.log(JSON.stringify(eventRes.data));
-  // console.log(JSON.stringify(pvRes.data));
+  const reportData = (response: any): any => {
+    if (response && response.data && response.data.reports && response.data.reports[0] && response.data.reports[0].data && response.data.reports[0].data.rows) {
+      return response.data.reports[0].data.rows;
+    }
+    else {
+      return [];
+    }
+  }
 
   const eventRows = new Map();
-  if (eventRes && eventRes.data && eventRes.data.reports && eventRes.data.reports[0] && eventRes.data.reports[0].data && eventRes.data.reports[0].data.rows) {
-    eventRes.data.reports[0].data.rows.forEach((r: any) => {
-      const keyPair = uniqKeyPair(r);
+  reportData(eventRes).forEach((r: any) => {
+    const keyPair = uniqKeyPair(r);
 
-      const key = `${keyPair.date}_${keyPair.path}`;
-      const rowsByKey = eventRows.get(key);
-      if ( rowsByKey ){
-        rowsByKey.push(r);
-        eventRows.set(key, rowsByKey);
-      }
-      else {
-        eventRows.set(key, [r]);
-      }
-    });
-  }
+    const key = `${keyPair.date}_${keyPair.path}`;
+    const rowsByKey = eventRows.get(key);
+    if ( rowsByKey ){
+      rowsByKey.push(r);
+      eventRows.set(key, rowsByKey);
+    }
+    else {
+      eventRows.set(key, [r]);
+    }
+  });
 
   const calced = new Map();
 
-  if (pvRes && pvRes.data && pvRes.data.reports && pvRes.data.reports[0] && pvRes.data.reports[0].data && pvRes.data.reports[0].data.rows) {
-    pvRes.data.reports[0].data.rows.forEach((r: any) => {
-      const keyPair = uniqKeyPair(r);
-      const key = `${keyPair.date}_${keyPair.path}`;
+  reportData(pvRes).forEach((r: any) => {
+    const keyPair = uniqKeyPair(r);
+    const key = `${keyPair.date}_${keyPair.path}`;
 
-      let row = calced.get(key);
-      if ( row ) {
-        row['pageViews'] += parseInt(r.metrics[0].values[0]);
-      }
-      else {
-        row = {...keyPair,...{
-            pageTitle: r.dimensions[0],
-            socialNetwork: r.dimensions[3],
-            fullReferrer: r.dimensions[4],
-            source: r.dimensions[5],
-            pageViews: parseInt(r.metrics[0].values[0])
-          }
-        };
-      }
+    let row = calced.get(key);
+    if ( row ) {
+      row['pageViews'] += parseInt(r.metrics[PvMetrics.pageViews].values[0]);
+    }
+    else {
+      row = {...keyPair,...{
+          pageTitle: r.dimensions[PvDimension.pageTitle],
+          yearWeek: r.dimensions[PvDimension.yearWeek],
+          pageViews: parseInt(r.metrics[PvMetrics.pageViews].values[0])
+        }
+      };
+    }
 
-      const events = eventRows.get(key);
-      if ( events ) {
-        events.forEach((e: any) => {
-          const eventKey = formatEventField(e);
+    const events = eventRows.get(key);
+    if ( events ) {
+      events.forEach((e: any) => {
+        const eventKey = formatEventField(e);
 
-          if (row[eventKey] === undefined) {
-            row[eventKey] = parseInt(e.metrics[0].values[0]);
-          }
-          else {
-            row[eventKey] += parseInt(e.metrics[0].values[0]);
-          }
-        });
-      }
-      calced.set(key, row);
-    });
-  }
+        if (row[eventKey] === undefined) {
+          row[eventKey] = parseInt(e.metrics[EventMetrics.totalEvents].values[0]);
+        }
+        else {
+          row[eventKey] += parseInt(e.metrics[EventMetrics.totalEvents].values[0]);
+        }
+      });
+    }
+    calced.set(key, row);
+  });
 
   console.log(calced.values());
   const byDate = Array.from(calced.values()).reduce((acc, cur) => {
