@@ -21,6 +21,11 @@ jobs:
       - uses: actions/setup-node@v2
         with:
           node-version: '12'
+      - uses: GoogleCloudPlatform/github-actions/setup-gcloud@master
+        with:
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+          service_account_key: ${{ secrets.GCP_SA_KEY }}
+          export_default_credentials: true
       - uses: actions/cache@v2
         with:
           path: ~/.npm
@@ -30,8 +35,6 @@ jobs:
       - run: npm ci
       - name: report
         env:
-          GCP_KEY: ${{ secrets.GCP_KEY }}
-          GOOGLE_APPLICATION_CREDENTIALS: ${{ secrets.GCP_KEY }}
           GA_VIEW_ID: ${{ secrets.GA_VIEW_ID }}
         run: sh batch.sh
 

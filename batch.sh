@@ -24,7 +24,7 @@ while true; do
 
 
   export TARGET_DATE=$(date -d "$current_date" "+%Y%m%d")
-  embulk run embulk/report.yml.liquid
+  embulk run embulk/load.yml.liquid
 
   current_date=$(date -d "$current_date 1day" "+%Y-%m-%d")
 done

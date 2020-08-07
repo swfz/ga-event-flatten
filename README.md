@@ -8,7 +8,7 @@ eventとpvを計算するために同一レコードに落とし込むための�
 
 ## environment
 ### embulk
-- GCP_KEY
+- GOOGLE_APPLICATION_CREDENTIALS
 
 ### batch
 - GOOGLE_APPLICATION_CREDENTIALS
