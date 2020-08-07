@@ -43,5 +43,6 @@ jobs:
       - name: report
         env:
           GA_VIEW_ID: ${{ secrets.GA_VIEW_ID }}
+          GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
         run: sh batch.sh
 
