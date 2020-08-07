@@ -24,6 +24,9 @@ while true; do
 
 
   export TARGET_DATE=$(date -d "$current_date" "+%Y%m%d")
+  echo "$PWD"
+  cat $PWD/embulk/load.yml.liquid
+  ls -al
   /usr/local/bin/embulk run $PWD/embulk/load.yml.liquid
 
   current_date=$(date -d "$current_date 1day" "+%Y-%m-%d")
