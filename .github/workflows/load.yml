@@ -36,7 +36,7 @@ jobs:
           sudo apt update
           sudo apt install -y openjdk-8-jre openjdk-8-jdk
           sudo curl --create-dirs -o /usr/local/bin/embulk -L https://github.com/embulk/embulk/releases/download/v0.9.23/embulk-0.9.23.jar
-          $(which embulk) gem install embulk-output-bigquery
+          sudo $(which embulk) gem install embulk-output-bigquery
       - run: npm ci
       - name: report
         env:
