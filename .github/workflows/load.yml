@@ -43,5 +43,5 @@ jobs:
         env:
           GA_VIEW_ID: ${{ secrets.GA_VIEW_ID }}
           PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
-        run: sh batch.sh
+        run: sh batch.sh ${{ github.event.inputs.start_date }} ${{ github.event.inputs.end_date }}
 
