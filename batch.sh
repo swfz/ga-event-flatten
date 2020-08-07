@@ -1,8 +1,11 @@
 #!/bin/bash
 
-start_date=$1
-end_date=$2
+default_start_date=$(date -d "8day ago" "+%Y-%m-%d")
+default_end_date=$(date -d "1day ago" "+%Y-%m-%d")
+start_date=${1:-$default_start_date}
+end_date=${2:-$default_end_date}
 
+echo "start report script"
 result_code=0
 npx ts-node index.ts $GA_VIEW_ID $start_date $end_date || result_code=$?
 
