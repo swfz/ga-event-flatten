@@ -1,7 +1,6 @@
 name: report
 
 on:
-  push:
   workflow_dispatch:
     inputs:
       start_date:
