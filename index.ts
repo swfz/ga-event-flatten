@@ -9,21 +9,26 @@ import Schema$ReportRequest = analyticsreporting_v4.Schema$ReportRequest;
 import Schema$DateRange = analyticsreporting_v4.Schema$DateRange;
 import Schema$GetReportsResponse = analyticsreporting_v4.Schema$GetReportsResponse;
 
-enum PvDimension {
-  pageTitle,
+enum KeyDimension {
   date,
   pagePath,
+}
+enum PvDimension {
+  date,
+  pagePath,
+  pageTitle,
   yearWeek
 }
 enum EventDimension {
-  pageTitle,
   date,
   pagePath,
+  pageTitle,
   yearWeek,
   eventCategory,
   eventAction,
   eventLabel
 }
+
 enum PvMetrics {
   pageViews,
   sessions,
@@ -36,8 +41,10 @@ enum EventMetrics {
   eventValue
 }
 
-type Dimension = PvDimension|EventDimension;
-type Metrics = PvMetrics|EventMetrics;
+const dimension = {...KeyDimension, ...PvDimension, ...EventDimension};
+type Dimension = typeof dimension;
+const metrics = {...PvMetrics, ...EventMetrics};
+type Metrics = typeof metrics;
 type GaKey = Dimension|Metrics;
 
 const analyticsreporting = google.analyticsreporting('v4');
@@ -78,8 +85,8 @@ const formatEventField = (row: any): string => {
 }
 
 const uniqKeyPair = (row: any) => {
-  const date = row.dimensions[PvDimension.date];
-  const path = row.dimensions[PvDimension.pagePath].replace(/\?.*/,'');
+  const date = row.dimensions[KeyDimension.date];
+  const path = row.dimensions[KeyDimension.pagePath].replace(/\?.*/,'');
 
   return {date, path}
 }
@@ -147,15 +154,21 @@ const toGaKeys = (enumObject: any): string[] => {
 
     let row = calced.get(key);
     if ( row ) {
-      row['pageViews'] += parseInt(r.metrics[PvMetrics.pageViews].values[0]);
+      toStringKeys(PvMetrics).forEach((m: any) => {
+        const value = r.metrics[PvMetrics[m]] ? r.metrics[PvMetrics[m]].values[0] : 0;
+        row[m] += parseInt(value);
+      });
     }
     else {
       row = {...keyPair,...{
           pageTitle: r.dimensions[PvDimension.pageTitle],
           yearWeek: r.dimensions[PvDimension.yearWeek],
-          pageViews: parseInt(r.metrics[PvMetrics.pageViews].values[0])
         }
       };
+      toStringKeys(PvMetrics).forEach((m: any) => {
+        const value = r.metrics[PvMetrics[m]] ? r.metrics[PvMetrics[m]].values[0] : 0;
+        row[m] = parseInt(value);
+      });
     }
 
     const events = eventRows.get(key);
