@@ -9,8 +9,36 @@ import Schema$ReportRequest = analyticsreporting_v4.Schema$ReportRequest;
 import Schema$DateRange = analyticsreporting_v4.Schema$DateRange;
 import Schema$GetReportsResponse = analyticsreporting_v4.Schema$GetReportsResponse;
 
-// custom dimensionは複数指定すると結果が返ってこない
+enum PvDimension {
+  pageTitle,
+  date,
+  pagePath,
+  yearWeek
+}
+enum EventDimension {
+  pageTitle,
+  date,
+  pagePath,
+  yearWeek,
+  eventCategory,
+  eventAction,
+  eventLabel
+}
+enum PvMetrics {
+  pageViews,
+  sessions,
+  adsenseAdsViewed,
+  adsenseAdsClicks,
+  adsenseRevenue
+}
+enum EventMetrics {
+  totalEvents,
+  eventValue
+}
 
+type Dimension = PvDimension|EventDimension;
+type Metrics = PvMetrics|EventMetrics;
+type GaKey = Dimension|Metrics;
 
 const analyticsreporting = google.analyticsreporting('v4');
 
@@ -56,37 +84,6 @@ const uniqKeyPair = (row: any) => {
   return {date, path}
 }
 
-enum PvDimension {
-  pageTitle,
-  date,
-  pagePath,
-  yearWeek
-}
-enum EventDimension {
-  pageTitle,
-  date,
-  pagePath,
-  yearWeek,
-  eventCategory,
-  eventAction,
-  eventLabel
-}
-enum PvMetrics {
-  pageViews,
-  sessions,
-  adsenseAdsViewed,
-  adsenseAdsClicks,
-  adsenseRevenue
-}
-enum EventMetrics {
-  totalEvents,
-  eventValue
-}
-
-type Dimension = PvDimension|EventDimension;
-type Metrics = PvMetrics|EventMetrics;
-type GaKey = Dimension|Metrics;
-
 const toStringKeys = (enumObject: any): string[] => {
   return Object.keys(enumObject).filter(v => isNaN(Number(v)) === false).map((k: string) => enumObject[k]);
 }
@@ -105,7 +102,7 @@ const toGaKeys = (enumObject: any): string[] => {
 
   const eventRes = await request(authClient, last7DaysRange, [
     ...toGaKeys(EventMetrics)
-  ],[
+],[
     ...toGaKeys(EventDimension)
   ]);
 
@@ -187,7 +184,6 @@ const toGaKeys = (enumObject: any): string[] => {
   Object.keys(byDate).forEach(date => {
     fs.writeFileSync(`results/result-${date}.json`, JSON.stringify(byDate[date]));
   });
-  // fs.writeFileSync('result.json', JSON.stringify(Array.from(calced.values())));
 })();
 
 
