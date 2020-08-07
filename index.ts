@@ -118,8 +118,8 @@ const toGaKeys = (enumObject: any): string[] => {
     ...toGaKeys(PvDimension)
   ]);
 
-  fs.writeFileSync('result-event.json', JSON.stringify(eventRes.data));
-  fs.writeFileSync('result-pv.json', JSON.stringify(pvRes.data));
+  // fs.writeFileSync('result-event.json', JSON.stringify(eventRes.data));
+  // fs.writeFileSync('result-pv.json', JSON.stringify(pvRes.data));
 
   const reportData = (response: any): any => {
     if (response && response.data && response.data.reports && response.data.reports[0] && response.data.reports[0].data && response.data.reports[0].data.rows) {
@@ -186,7 +186,7 @@ const toGaKeys = (enumObject: any): string[] => {
     calced.set(key, row);
   });
 
-  console.log(calced.values());
+  // console.log(calced.values());
   const byDate = Array.from(calced.values()).reduce((acc, cur) => {
     acc[cur.date] = (acc[cur.date] === undefined) ? [] : acc[cur.date];
     acc[cur.date].push(cur);
