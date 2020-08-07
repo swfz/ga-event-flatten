@@ -1,0 +1,57 @@
+in:
+  type: file
+  path_prefix: results/result-{{ env.TARGET_DATE }}.json
+  parser:
+    type: json
+    flatten_json_array: true
+    charset: UTF-8
+    newline: LF
+    columns:
+      - { name: date, type: timestamp, format: '%Y%m%d' }
+      - { name: path, type: string}
+      - { name: year_week, type: string, element_at: /yearWeek }
+      - { name: page_title, type: string, element_at: /pageTitle }
+      - { name: page_views, type: long, element_at: /pageViews }
+      - { name: sessions, type: double }
+      - { name: adsense_ads_viewed, type: double, /adsenseAdsViewed }
+      - { name: adsense_ads_clicks, type: double, /adsenseAdsClicks }
+      - { name: adsense_revenue, type: double, /adsenseRevenue }
+      - { name: external_link, type: long, element_at: /ExternalLink }
+      - { name: read, type: long, element_at: /Read }
+      - { name: scroll_10p, type: long }
+      - { name: scroll_25p, type: long }
+      - { name: scroll_50p, type: long }
+      - { name: scroll_75p, type: long }
+      - { name: scroll_90p, type: long }
+      - { name: timer_1m, type: long, element_at: /TimerPV_1m }
+      - { name: timer_2m, type: long, element_at: /TimerPV_2m }
+      - { name: timer_3m, type: long, element_at: /TimerPV_3m }
+      - { name: timer_4m, type: long, element_at: /TimerPV_4m }
+      - { name: timer_5m, type: long, element_at: /TimerPV_5m }
+      - { name: timer_6m, type: long, element_at: /TimerPV_6m }
+      - { name: timer_7m, type: long, element_at: /TimerPV_7m }
+      - { name: timer_8m, type: long, element_at: /TimerPV_8m }
+      - { name: timer_9m, type: long, element_at: /TimerPV_9m }
+      - { name: timer_10m, type: long, element_at: /TimerPV_10m }
+      - { name: timer_15m, type: long, element_at: /TimerPV_15m }
+      - { name: timer_20m, type: long, element_at: /TimerPV_20m }
+      - { name: timer_30s, type: long, element_at: /TimerPV_30s }
+      - { name: undefined_loaded, type: long }
+
+out:
+  type: bigquery
+  project: {{ env.PROJECT_ID }}
+  mode: replace
+  dataset: blog_data
+  table: ga_events${{ env.TARGET_DATE }}
+  location: asia-northeast1
+  compression: GZIP
+  auto_create_table: true
+  source_format: NEWLINE_DELIMITED_JSON
+  auth_method: service_account
+  json_keyfile: {{ env.GOOGLE_APPLICATION_CREDENTIALS }}
+  # time_partitioning:
+  #   type: DAY
+  #   field: date
+# out:
+#   type: stdout
