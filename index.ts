@@ -37,8 +37,7 @@ enum PvMetrics {
   adsenseRevenue
 }
 enum EventMetrics {
-  totalEvents,
-  eventValue
+  totalEvents
 }
 
 const dimension = {...KeyDimension, ...PvDimension, ...EventDimension};
@@ -155,8 +154,8 @@ const toGaKeys = (enumObject: any): string[] => {
     let row = calced.get(key);
     if ( row ) {
       toStringKeys(PvMetrics).forEach((m: any) => {
-        const value = r.metrics[PvMetrics[m]] ? r.metrics[PvMetrics[m]].values[0] : 0;
-        row[m] += parseInt(value);
+        const value = r.metrics[PvMetrics[m]] ? parseFloat(r.metrics[PvMetrics[m]].values[0]) : 0.0;
+        row[m] += value;
       });
     }
     else {
@@ -166,8 +165,8 @@ const toGaKeys = (enumObject: any): string[] => {
         }
       };
       toStringKeys(PvMetrics).forEach((m: any) => {
-        const value = r.metrics[PvMetrics[m]] ? r.metrics[PvMetrics[m]].values[0] : 0;
-        row[m] = parseInt(value);
+        const value = r.metrics[PvMetrics[m]] ? parseFloat(r.metrics[PvMetrics[m]].values[0]) : 0.0;
+        row[m] = value;
       });
     }
 
