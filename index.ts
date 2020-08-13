@@ -96,8 +96,8 @@ const toGaKeys = (enumObject: any): string[] => {
   });
   const authClient = await auth.getClient();
 
-  const startDate = process.argv[3] ? process.argv[3] : moment().add(-8, 'days').format('YYYY-MM-DD');
-  const endDate = process.argv[4] ? process.argv[4] : moment().add(-1, 'days').format('YYYY-MM-DD');
+  const startDate = process.argv[3] ?? moment().add(-8, 'days').format('YYYY-MM-DD');
+  const endDate = process.argv[4] ?? moment().add(-1, 'days').format('YYYY-MM-DD');
   const last7DaysRange = {startDate, endDate};
 
   const eventRes = await request(authClient, last7DaysRange, [
@@ -177,7 +177,7 @@ const toGaKeys = (enumObject: any): string[] => {
 
   // console.log(calced.values());
   const byDate = Array.from(calced.values()).reduce((acc, cur) => {
-    acc[cur.date] = (acc[cur.date] === undefined) ? [] : acc[cur.date];
+    acc[cur.date] = acc[cur.date] ?? [];
     acc[cur.date].push(cur);
     return acc;
   }, {});
