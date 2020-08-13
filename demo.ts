@@ -21,13 +21,7 @@ console.log(PvDimension[PvDimension.pagePath]); // pagePath
 const toStringKeys = (e: any) => {
   return Object.keys(e).filter(v => isNaN(Number(v))===false).map(k => e[k])
 }
-
 console.log(toStringKeys(PvDimension));
-
-
-const mergeEnum = () => {
-}
-
 const mergedEnum = {
   ...Hoge,
   ...Fuga
@@ -72,6 +66,8 @@ const toEnum = (keys: FooBar[]) => {
 // const fooEnum = toEnum<FooBar>([...foo, ...bar]);
 const fooEnum = toEnum([...foo, ...bar]);
 console.log(fooEnum);
+
+console.log('-------------------');
 
 //
 // Enumライクなキーマッピングできるようにする
