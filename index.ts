@@ -183,7 +183,7 @@ const toGaKeys = (enumObject: any): string[] => {
   }, {});
 
   Object.keys(byDate).forEach(date => {
-    fs.writeFileSync(`results/result-${date}-after.json`, JSON.stringify(byDate[date]));
+    fs.writeFileSync(`results/result-${date}.json`, JSON.stringify(byDate[date]));
   });
 })();
 
