@@ -9,42 +9,36 @@ import Schema$ReportRequest = analyticsreporting_v4.Schema$ReportRequest;
 import Schema$DateRange = analyticsreporting_v4.Schema$DateRange;
 import Schema$GetReportsResponse = analyticsreporting_v4.Schema$GetReportsResponse;
 
-enum KeyDimension {
-  date,
-  pagePath,
-}
-enum PvDimension {
-  date,
-  pagePath,
-  pageTitle,
-  yearWeek
-}
-enum EventDimension {
-  date,
-  pagePath,
-  pageTitle,
-  yearWeek,
-  eventCategory,
-  eventAction,
-  eventLabel
+type Unpacked<T> = T extends { [K in keyof T]: infer U } ? U : never;
+
+const keyDimensions = ['date', 'pagePath'] as const;
+const pvDimensions = ['pageTitle', 'yearWeek'] as const;
+const eventDimensions = ['pageTitle', 'yearWeek', 'eventCategory', 'eventAction', 'eventLabel'] as const;
+const pvMetrics = ['pageViews', 'sessions', 'adsenseAdsViewed', 'adsenseAdsClicks', 'adsenseRevenue'] as const;
+const eventMetrics = ['totalEvents'] as const;
+
+type KeyDimension = Unpacked<typeof keyDimensions>;
+type PvDimension = Unpacked<typeof pvDimensions>;
+type EventDimension = Unpacked<typeof eventDimensions>;
+type PvMetrics = Unpacked<typeof pvMetrics>;
+type EventMetrics = Unpacked<typeof eventMetrics>;
+type Dimension = KeyDimension | PvDimension | EventDimension;
+type Metrics = PvMetrics | EventMetrics;
+type GaKey = Dimension | Metrics;
+
+const toEnum = (keys: GaKey[]) => {
+  return keys.reduce((acc, cur: GaKey, i: number) => {
+    acc[i] = cur;
+    acc[cur] = i;
+    return acc;
+    }, {} as {[key in GaKey]: number} & {[key: number]: GaKey});
 }
 
-enum PvMetrics {
-  pageViews,
-  sessions,
-  adsenseAdsViewed,
-  adsenseAdsClicks,
-  adsenseRevenue
-}
-enum EventMetrics {
-  totalEvents
-}
-
-const dimension = {...KeyDimension, ...PvDimension, ...EventDimension};
-type Dimension = typeof dimension;
-const metrics = {...PvMetrics, ...EventMetrics};
-type Metrics = typeof metrics;
-type GaKey = Dimension|Metrics;
+const keyDimensionEnum = toEnum([...keyDimensions]);
+const pvDimensionEnum = toEnum([...keyDimensions, ...pvDimensions]);
+const eventDimensionEnum = toEnum([...keyDimensions, ...eventDimensions]);
+const pvMetricsEnum = toEnum([...pvMetrics]);
+const eventMetricsEnum = toEnum([...eventMetrics]);
 
 const analyticsreporting = google.analyticsreporting('v4');
 
@@ -74,18 +68,18 @@ const formatEventField = (row: any): string => {
 
   const formatActions = ['scroll'];
 
-  const action = formatActions.includes(row.dimensions[EventDimension.eventCategory]) ?
-    row.dimensions[EventDimension.eventAction].replace('%', 'p') :
-    row.dimensions[EventDimension.eventAction];
+  const action = formatActions.includes(row.dimensions[eventDimensionEnum.eventCategory]) ?
+    row.dimensions[eventDimensionEnum.eventAction].replace('%', 'p') :
+    row.dimensions[eventDimensionEnum.eventAction];
 
-  return onlyCategoryKeys.includes(row.dimensions[EventDimension.eventCategory]) ?
-    row.dimensions[EventDimension.eventCategory] :
-    `${row.dimensions[EventDimension.eventCategory]}_${action}`;
+  return onlyCategoryKeys.includes(row.dimensions[eventDimensionEnum.eventCategory]) ?
+    row.dimensions[eventDimensionEnum.eventCategory] :
+    `${row.dimensions[eventDimensionEnum.eventCategory]}_${action}`;
 }
 
 const uniqKeyPair = (row: any) => {
-  const date = row.dimensions[KeyDimension.date];
-  const path = row.dimensions[KeyDimension.pagePath].replace(/\?.*/,'');
+  const date = row.dimensions[keyDimensionEnum.date];
+  const path = row.dimensions[keyDimensionEnum.pagePath].replace(/\?.*/,'');
 
   return {date, path}
 }
@@ -107,27 +101,22 @@ const toGaKeys = (enumObject: any): string[] => {
   const last7DaysRange = {startDate, endDate};
 
   const eventRes = await request(authClient, last7DaysRange, [
-    ...toGaKeys(EventMetrics)
+    ...toGaKeys(eventMetricsEnum)
 ],[
-    ...toGaKeys(EventDimension)
+    ...toGaKeys(eventDimensionEnum)
   ]);
 
   const pvRes = await request(authClient, last7DaysRange, [
-    ...toGaKeys(PvMetrics)
+    ...toGaKeys(pvMetricsEnum)
   ],[
-    ...toGaKeys(PvDimension)
+    ...toGaKeys(pvDimensionEnum)
   ]);
 
   // fs.writeFileSync('result-event.json', JSON.stringify(eventRes.data));
   // fs.writeFileSync('result-pv.json', JSON.stringify(pvRes.data));
 
   const reportData = (response: any): any => {
-    if (response && response.data && response.data.reports && response.data.reports[0] && response.data.reports[0].data && response.data.reports[0].data.rows) {
-      return response.data.reports[0].data.rows;
-    }
-    else {
-      return [];
-    }
+    return response?.data?.reports?.[0]?.data?.rows ?? [];
   }
 
   const eventRows = new Map();
@@ -153,19 +142,19 @@ const toGaKeys = (enumObject: any): string[] => {
 
     let row = calced.get(key);
     if ( row ) {
-      toStringKeys(PvMetrics).forEach((m: any) => {
-        const value = r.metrics[PvMetrics[m]] ? parseFloat(r.metrics[PvMetrics[m]].values[0]) : 0.0;
+      toStringKeys(pvMetricsEnum).forEach((m: any) => {
+        const value = r.metrics[pvMetricsEnum[m]] ? parseFloat(r.metrics[pvMetricsEnum[m]].values[0]) : 0.0;
         row[m] += value;
       });
     }
     else {
       row = {...keyPair,...{
-          pageTitle: r.dimensions[PvDimension.pageTitle],
-          yearWeek: r.dimensions[PvDimension.yearWeek],
+          pageTitle: r.dimensions[pvDimensionEnum.pageTitle],
+          yearWeek: r.dimensions[pvDimensionEnum.yearWeek],
         }
       };
-      toStringKeys(PvMetrics).forEach((m: any) => {
-        const value = r.metrics[PvMetrics[m]] ? parseFloat(r.metrics[PvMetrics[m]].values[0]) : 0.0;
+      toStringKeys(pvMetricsEnum).forEach((m: any) => {
+        const value = r.metrics[pvMetricsEnum[m]] ? parseFloat(r.metrics[pvMetricsEnum[m]].values[0]) : 0.0;
         row[m] = value;
       });
     }
@@ -176,10 +165,10 @@ const toGaKeys = (enumObject: any): string[] => {
         const eventKey = formatEventField(e);
 
         if (row[eventKey] === undefined) {
-          row[eventKey] = parseInt(e.metrics[EventMetrics.totalEvents].values[0]);
+          row[eventKey] = parseInt(e.metrics[eventMetricsEnum.totalEvents].values[0]);
         }
         else {
-          row[eventKey] += parseInt(e.metrics[EventMetrics.totalEvents].values[0]);
+          row[eventKey] += parseInt(e.metrics[eventMetricsEnum.totalEvents].values[0]);
         }
       });
     }
@@ -194,7 +183,7 @@ const toGaKeys = (enumObject: any): string[] => {
   }, {});
 
   Object.keys(byDate).forEach(date => {
-    fs.writeFileSync(`results/result-${date}.json`, JSON.stringify(byDate[date]));
+    fs.writeFileSync(`results/result-${date}-after.json`, JSON.stringify(byDate[date]));
   });
 })();
 
