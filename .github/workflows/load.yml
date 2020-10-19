@@ -44,4 +44,14 @@ jobs:
           GA_VIEW_ID: ${{ secrets.GA_VIEW_ID }}
           PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
         run: sh batch.sh ${{ github.event.inputs.start_date }} ${{ github.event.inputs.end_date }}
+  slack-notify:
+    if: always()
+    needs: [report]
+    name: post slack
+    runs-on: ubuntu-latest
+    steps:
+      - uses: Gamesight/slack-workflow-status@v1.0.1
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          slack_webhook_url: ${{ secrets.SLACK_WEBHOOK_URL }}
 
